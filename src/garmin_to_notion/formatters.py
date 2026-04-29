@@ -104,8 +104,11 @@ def format_activity_type(
         if "stretch" in name_lower:
             return "Stretching", "Stretching"
 
+    # Fallback: if main_type isn't a known category, map to "Other"
+    KNOWN = {"Running","Cycling","Swimming","Walking","Strength","HIIT","Cardio","Rowing","Yoga/Pilates","Combat Sports","Racquet Sports","Team Sports","Winter Sports","Water Sports","Climbing","Multi Sport","Other","Road Biking","Mountain Biking","Resort Snowboarding","Treadmill Running","Trail Running","Track Running","Ultra Running","Indoor Cycling","Gravel Cycling","E-Bike","Lap Swimming","Open Water Swimming","Strength Training","Crossfit","Functional Training","BJJ/MMA","Boxing","Kickboxing","Tennis","Padel","Badminton","Pickleball","Squash","Table Tennis","Soccer","Basketball","Volleyball","Football","Rugby","Hockey","Skiing","Snowboarding","Cross Country Skiing","Ice Skating","Kayaking","Surfing","Stand Up Paddleboarding","Rock Climbing","Bouldering","Indoor Climbing","Mountaineering","Hiking","Speed Walking","Yoga","Pilates","Stretching","Meditation","Indoor Rowing","Golf","Dance","Skateboarding","Triathlon","Incident Detected"}
+    if main_type not in KNOWN:
+        main_type = "Other"
     return main_type, activity_subtype
-
 
 def format_training_message(message: str) -> str:
     """Map a Garmin training effect message prefix to a readable label."""
