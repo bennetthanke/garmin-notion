@@ -86,6 +86,7 @@ def sync_daily_steps(
     created, updated, skipped = 0, 0, 0
 
     for steps in daily_steps:
+        time.sleep(1.0)
         steps_date = steps.get("calendarDate")
         existing = _steps_exist(notion, settings.steps_db_id, steps_date)
 

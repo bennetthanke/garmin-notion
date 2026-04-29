@@ -209,6 +209,7 @@ def sync_sleep(
     created = 0
 
     for data in sleep_entries:
+        time.sleep(1.0)
         sleep_date = data.get("dailySleepDTO", {}).get("calendarDate")
         if not sleep_date:
             continue

@@ -171,6 +171,7 @@ def sync_workouts(notion: NotionClient, settings: Settings) -> None:
     created, updated, skipped = 0, 0, 0
 
     for activity in activities:
+        time.sleep(1.0)
         props = activity["properties"]
         activity_type = get_prop(props, "Type", "select") or ""
         subactivity_type = get_prop(props, "SubType", "select") or ""

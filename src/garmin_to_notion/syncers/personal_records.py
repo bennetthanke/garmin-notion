@@ -172,6 +172,7 @@ def sync_personal_records(
     created, updated, skipped = 0, 0, 0
 
     for record in filtered:
+        time.sleep(1.0)
         raw_date = record.get("prStartTimeGmtFormatted", "")
         if len(raw_date) > 10:
             # Full datetime in GMT → convert to local timezone, keep date only

@@ -207,6 +207,7 @@ def sync_activities(
     created, updated, skipped = 0, 0, 0
 
     for activity in activities:
+        time.sleep(1.0)
         activity_name = activity.get("activityName", "Unnamed Activity")
         activity_type, _ = format_activity_type(
             activity.get("activityType", {}).get("typeKey", "Unknown"),
