@@ -168,10 +168,27 @@ def sync_workouts(notion: NotionClient, settings: Settings) -> None:
     activities = fetch_all_pages(notion, settings.activities_db_id)
     logger.info("Found %d activities", len(activities))
 
+   # Pre-fetch existing Garmin IDs from Workouts DB
+    existing_workout_ids = set()
+    cursor = None
+    while True:
+        qargs = {"database_id": settings.workouts_db_id, "page_size": 100}
+        if cursor:
+            qargs["start_cursor"] = cursor
+        res = notion.databases.query(**qargs)       
+        if not res["results"]:
+            break
+        for page in res["results"]:
+            garmin_id = get_prop(page["properties"], "Garmin ID", "number")
+            if garmin_id:
+                existing_workout_ids.add(garmin_id)
+        cursor = res.get("next_cursor")
+        time.sleep(0.5)  # Avoid hitting rate limits
+    logger.info("Found %d existing workouts with Garmin IDs", len(existing_workout_ids))
+
     created, updated, skipped = 0, 0, 0
 
     for activity in activities:
-        time.sleep(1.0)
         props = activity["properties"]
         activity_type = get_prop(props, "Type", "select") or ""
         subactivity_type = get_prop(props, "SubType", "select") or ""
@@ -180,7 +197,13 @@ def sync_workouts(notion: NotionClient, settings: Settings) -> None:
             skipped += 1
             continue
 
+        garmin_id_check = get_prop(props, "Garmin ID", "number")
+        if garmin_id_check and garmin_id_check in existing_workout_ids:
+                skipped += 1
+                continue
+
         workout_props, title, modality, date_start, garmin_id = _build_properties(activity)
+        time.sleep(1.0)
         existing = _workout_exists(
             notion, settings.workouts_db_id, garmin_id, date_start, modality
         )
@@ -188,6 +211,7 @@ def sync_workouts(notion: NotionClient, settings: Settings) -> None:
         if existing:
             notion.pages.update(page_id=existing["id"], properties=workout_props)
             updated += 1
+            logger.info("[%d/%d] Updated workout: %s", created + updated + skipped, len(activities), modality)
         else:
             if garmin_id:
                 workout_props["Source"] = {
@@ -199,6 +223,7 @@ def sync_workouts(notion: NotionClient, settings: Settings) -> None:
                 properties=workout_props,
             )
             created += 1
+            logger.info("[%d/%d] Created workout: %s", created + updated + skipped, len(activities), modality)
 
     logger.info(
         "Workouts sync complete: %d created, %d updated, %d skipped",

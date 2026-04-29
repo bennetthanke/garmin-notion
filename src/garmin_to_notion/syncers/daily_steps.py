@@ -83,28 +83,53 @@ def sync_daily_steps(
         logger.debug("Sample: date=%s steps=%s goal=%s",
             sample.get("calendarDate"), sample.get("totalSteps"), sample.get("stepGoal"))
 
+    # Pre-fetch existing dates to skip without API calls
+    existing_dates = {}
+    cursor = None
+    while True:
+        qargs = {"database_id": settings.steps_db_id, "page_size": 100}
+        if cursor:
+            qargs["start_cursor"] = cursor
+        res = notion.databases.query(**qargs)
+        for pg in res["results"]:
+            date_prop = pg["properties"].get("Date", {}).get("date")
+            if date_prop and date_prop.get("start"):
+                existing_dates[date_prop["start"][:10]] = pg
+        if not res.get("has_more"):
+            break
+        cursor = res.get("next_cursor")
+        time.sleep(0.5)
+    logger.info("Pre-fetched %d existing step entries", len(existing_dates))
     created, updated, skipped = 0, 0, 0
 
     for steps in daily_steps:
-        time.sleep(1.0)
         steps_date = steps.get("calendarDate")
-        existing = _steps_exist(notion, settings.steps_db_id, steps_date)
-
+        existing = existing_dates.get(steps_date)
         if existing:
             if _steps_need_update(existing, steps):
+                time.sleep(1.0)
                 props = _build_properties(steps)
                 del props["Date"]  # Don't update the date
                 notion.pages.update(page_id=existing["id"], properties=props)
                 updated += 1
+                logger.info(
+                    "[%d/%d] Updated: %s",
+                    created + updated + skipped, len(daily_steps), steps_date,
+                )
             else:
                 skipped += 1
         else:
+            time.sleep(1.0)
             props = _build_properties(steps)
             notion.pages.create(
                 parent={"database_id": settings.steps_db_id},
                 properties=props,
             )
             created += 1
+            logger.info(
+                "[%d/%d] Created: %s (skipped %d existing)",
+                created + updated + skipped, len(daily_steps), steps_date, skipped,
+            )
 
     if created > 0 and all((s.get("totalSteps") or 0) == 0 for s in daily_steps):
         logger.warning("All step entries have 0 steps — check Garmin sync or watch permissions")

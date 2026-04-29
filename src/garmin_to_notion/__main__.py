@@ -86,7 +86,6 @@ def main() -> None:
     from garmin_to_notion.syncers.personal_records import sync_personal_records
     from garmin_to_notion.syncers.sleep import sync_sleep
     from garmin_to_notion.syncers.summary import sync_summary
-    from garmin_to_notion.syncers.workouts import sync_workouts
 
     clients = init_clients(settings)
 
@@ -95,7 +94,6 @@ def main() -> None:
         "records": lambda: sync_personal_records(clients.garmin, clients.notion, settings),
         "steps": lambda: sync_daily_steps(clients.garmin, clients.notion, settings),
         "sleep": lambda: sync_sleep(clients.garmin, clients.notion, settings),
-        "workouts": lambda: sync_workouts(clients.notion, settings),
         "summary": lambda: sync_summary(clients.notion, settings),
     }
 
@@ -105,7 +103,6 @@ def main() -> None:
         "records": settings.pr_db_id,
         "steps": settings.steps_db_id,
         "sleep": settings.sleep_db_id,
-        "workouts": settings.workouts_db_id,
         "summary": settings.summary_db_id,
     }
 

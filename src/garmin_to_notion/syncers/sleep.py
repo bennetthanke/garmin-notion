@@ -209,7 +209,6 @@ def sync_sleep(
     created = 0
 
     for data in sleep_entries:
-        time.sleep(1.0)
         sleep_date = data.get("dailySleepDTO", {}).get("calendarDate")
         if not sleep_date:
             continue
@@ -217,12 +216,13 @@ def sync_sleep(
         properties = _build_properties(data, settings)
         if not properties:
             continue
-
+        time.sleep(1.0)
         notion.pages.create(
             parent={"database_id": settings.sleep_db_id},
             properties=properties,
         )
         created += 1
+        logger.info("[%d/%d] Created sleep: %s", created, len(sleep_entries), sleep_date)
 
     # Repair entries with missing/zero scores
     repaired = 0

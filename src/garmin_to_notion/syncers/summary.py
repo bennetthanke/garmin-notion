@@ -14,6 +14,7 @@ Runs AFTER the workouts sync.
 from __future__ import annotations
 
 import logging
+import time
 from collections import Counter
 from datetime import date, timedelta
 
@@ -348,6 +349,7 @@ def sync_summary(notion: NotionClient, settings: Settings) -> None:
     created, updated = 0, 0
 
     for summary in summaries:
+        time.sleep(1.0)
         props = _build_properties(summary)
         existing = _summary_exists(
             notion,
@@ -360,12 +362,14 @@ def sync_summary(notion: NotionClient, settings: Settings) -> None:
         if existing:
             notion.pages.update(page_id=existing["id"], properties=props)
             updated += 1
+            logger.info("[%d/%d] Updated summary: %s - %s", created + updated, len(summaries), summary["name"], summary["modality"])
         else:
             notion.pages.create(
                 parent={"database_id": settings.summary_db_id},
                 properties=props,
             )
             created += 1
+            logger.info("[%d/%d] Created summary: %s - %s", created + updated, len(summaries), summary["name"], summary["modality"])
 
     logger.info(
         "Summary sync complete: %d created, %d updated",

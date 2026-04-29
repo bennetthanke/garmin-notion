@@ -40,3 +40,6 @@ htmlcov/
 
 # Images (branding assets, not needed in repo)
 img/
+
+# Settings
+.vscode/

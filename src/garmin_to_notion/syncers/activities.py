@@ -204,11 +204,39 @@ def sync_activities(
     activities = garmin.get_activities(0, settings.fetch_limit)
     logger.info("Fetched %d activities from Garmin", len(activities))
 
+    # Pre-fetch all existing Garmin IDs to avoid redundant API lookups
+    existing_ids = set()
+    cursor = None
+    while True:
+        qargs = {"database_id": settings.activities_db_id, "page_size": 100}
+        if cursor:
+            qargs["start_cursor"] = cursor
+        res = notion.databases.query(**qargs)
+        for pg in res["results"]:
+            gid = pg["properties"].get("Garmin ID", {}).get("number")
+            if gid:
+                existing_ids.add(gid)
+        if not res.get("has_more"):
+            break
+        cursor = res.get("next_cursor")
+        time.sleep(0.5)
+    logger.info("Pre-fetched %d existing activity IDs", len(existing_ids))
+    
     created, updated, skipped = 0, 0, 0
 
     for activity in activities:
+        if activity.get("activityId") in existing_ids:
+            skipped += 1
+            continue
         time.sleep(1.0)
         activity_name = activity.get("activityName", "Unnamed Activity")
+        logger.info(
+            "[%d/%d] Syncing: %s (skipped %d existing)",
+            created + updated + skipped + 1,
+            len(activities),
+            activity_name,
+            skipped,
+        )
         activity_type, _ = format_activity_type(
             activity.get("activityType", {}).get("typeKey", "Unknown"),
             activity_name,
@@ -242,6 +270,7 @@ def sync_activities(
                 icon={"emoji": emoji},
             )
             created += 1
+            logger.info("[%d/%d] Created activity: %s", created + updated, len(activities), activity_name)
 
     logger.info(
         "Activities sync complete: %d created, %d updated, %d unchanged",

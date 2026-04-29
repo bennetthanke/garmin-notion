@@ -172,7 +172,6 @@ def sync_personal_records(
     created, updated, skipped = 0, 0, 0
 
     for record in filtered:
-        time.sleep(1.0)
         raw_date = record.get("prStartTimeGmtFormatted", "")
         if len(raw_date) > 10:
             # Full datetime in GMT → convert to local timezone, keep date only
@@ -192,6 +191,7 @@ def sync_personal_records(
         )
 
         if existing_date:
+            time.sleep(1.0)
             _update_record(
                 notion, existing_date["id"], activity_date, value, pace,
                 activity_name,
@@ -207,10 +207,12 @@ def sync_personal_records(
                 ):
                     existing_date_str = date_prop["date"]["start"]
                     if activity_date > existing_date_str:
+                        time.sleep(1.0)
                         _update_record(
                             notion, existing["id"], existing_date_str,
                             None, None, activity_name,
                         )
+                        time.sleep(1.0)
                         _create_record(
                             notion, settings.pr_db_id, activity_date,
                             activity_type, activity_name, value, pace,
@@ -219,6 +221,7 @@ def sync_personal_records(
                     else:
                         skipped += 1
                 else:
+                    time.sleep(1.0)
                     _update_record(
                         notion, existing["id"], activity_date, value, pace,
                         activity_name,
@@ -226,12 +229,14 @@ def sync_personal_records(
                     updated += 1
             except (KeyError, TypeError) as e:
                 logger.warning("Error processing record %s: %s", activity_name, e)
+                time.sleep(1.0)
                 _create_record(
                     notion, settings.pr_db_id, activity_date,
                     activity_type, activity_name, value, pace,
                 )
                 created += 1
         else:
+            time.sleep(1.0)
             _create_record(
                 notion, settings.pr_db_id, activity_date,
                 activity_type, activity_name, value, pace,
