@@ -1,15 +1,13 @@
-"""Aggregate Workouts, Steps, and Sleep into monthly/yearly summaries.
-
-Reads from the Workouts, Steps, and Sleep databases and creates/updates
+"""Aggregate Activities, Steps, and Sleep into monthly/yearly summaries.
+Reads from the Activities, Steps, and Sleep databases and creates/updates
 entries in the Summary database with totals per period (Month/Year) and
 per modality.
 
 Each period generates:
-  - 1 "All" entry with workout totals + lifestyle averages
+  - 1 "All" entry with activity totals + lifestyle averages
   - N entries, one per modality present in that period
 
-Runs AFTER the workouts sync.
-"""
+Runs AFTER the activities sync."""
 
 from __future__ import annotations
 
@@ -24,6 +22,82 @@ from garmin_to_notion.config import Settings
 from garmin_to_notion.notion_helpers import fetch_all_pages, get_prop
 
 logger = logging.getLogger(__name__)
+
+# Map Activities "Type" to Summary "Modality"
+TYPE_TO_MODALITY = {
+    "Running": "Running",
+    "Treadmill Running": "Running",
+    "Trail Running": "Running",
+    "Track Running": "Running",
+    "Ultra Running": "Running",
+    "Cycling": "Outdoor Cycling",
+    "Road Biking": "Outdoor Cycling",
+    "Mountain Biking": "Outdoor Cycling",
+    "Gravel Cycling": "Outdoor Cycling",
+    "E-Bike": "Outdoor Cycling",
+    "Indoor Cycling": "Indoor Cycling",
+    "Swimming": "Swimming",
+    "Lap Swimming": "Swimming",
+    "Open Water Swimming": "Swimming",
+    "Walking": "Walking",
+    "Hiking": "Walking",
+    "Speed Walking": "Walking",
+    "Strength": "Strength Training",
+    "Strength Training": "Strength Training",
+    "Functional Training": "Strength Training",
+    "Crossfit": "Crossfit",
+    "HIIT": "HIIT",
+    "Cardio": "HIIT",
+    "Yoga/Pilates": "Yoga",
+    "Yoga": "Yoga",
+    "Pilates": "Pilates",
+    "Stretching": "Yoga",
+    "Meditation": "Yoga",
+    "Combat Sports": "Combat Sports",
+    "BJJ/MMA": "BJJ",
+    "Boxing": "Combat Sports",
+    "Kickboxing": "Combat Sports",
+    "Racquet Sports": "Racquet Sports",
+    "Tennis": "Racquet Sports",
+    "Padel": "Racquet Sports",
+    "Badminton": "Racquet Sports",
+    "Pickleball": "Racquet Sports",
+    "Squash": "Racquet Sports",
+    "Table Tennis": "Racquet Sports",
+    "Team Sports": "Team Sports",
+    "Soccer": "Team Sports",
+    "Basketball": "Team Sports",
+    "Volleyball": "Team Sports",
+    "Football": "Team Sports",
+    "Rugby": "Team Sports",
+    "Hockey": "Team Sports",
+    "Winter Sports": "Winter Sports",
+    "Skiing": "Winter Sports",
+    "Snowboarding": "Winter Sports",
+    "Resort Snowboarding": "Winter Sports",
+    "Cross Country Skiing": "Winter Sports",
+    "Ice Skating": "Winter Sports",
+    "Water Sports": "Water Sports",
+    "Kayaking": "Water Sports",
+    "Surfing": "Water Sports",
+    "Stand Up Paddleboarding": "Water Sports",
+    "Climbing": "Climbing",
+    "Rock Climbing": "Climbing",
+    "Bouldering": "Climbing",
+    "Indoor Climbing": "Climbing",
+    "Mountaineering": "Climbing",
+    "Golf": "Golf",
+    "Dance": "Dance",
+    "Rowing": "Other",
+    "Indoor Rowing": "Other",
+    "Skateboarding": "Other",
+    "Triathlon": "Multi Sport",
+    "Multi Sport": "Multi Sport",
+    "Other": "Other",
+}
+
+# Activity types to skip entirely (not real exercises)
+SKIP_TYPES = {"Incident Detected"}
 
 
 def _parse_duration_minutes(duration_str: str) -> float:
@@ -162,17 +236,19 @@ def _compute_lifestyle_averages(
     return averages
 
 
-def _build_summaries(workouts: list[dict]) -> list[dict]:
-    """Group workouts into month/year buckets, then aggregate All + per-modality."""
+def _build_summaries(activities: list[dict]) -> list[dict]:
+    """Group activities into month/year buckets, then aggregate All + per-modality."""
     records: list[dict] = []
-    for w in workouts:
+    for w in activities:
         props = w["properties"]
         date_str = get_prop(props, "Date", "date")
         if not date_str:
             continue
-
         d = date.fromisoformat(date_str[:10])
-        modality = get_prop(props, "Modality", "select") or "Other"
+        activity_type = get_prop(props, "Type", "select") or "Other"
+        if activity_type in SKIP_TYPES:
+            continue
+        modality = TYPE_TO_MODALITY.get(activity_type, "Other")
         duration_str = get_prop(props, "Duration", "rich_text") or ""
         distance = get_prop(props, "Distance (km)", "number") or 0
         calories = get_prop(props, "Calories", "number") or 0
@@ -321,15 +397,15 @@ def sync_summary(notion: NotionClient, settings: Settings) -> None:
         logger.info("No summary database configured, skipping")
         return
 
-    if not settings.workouts_db_id:
-        logger.info("No workouts database configured, cannot build summaries")
+    if not settings.activities_db_id:
+        logger.info("No activities database configured, cannot build summaries")
         return
 
-    logger.info("Fetching workouts for summary aggregation...")
-    workouts = fetch_all_pages(notion, settings.workouts_db_id)
-    logger.info("Found %d workouts to aggregate", len(workouts))
+    logger.info("Fetching activities for summary aggregation...")
+    activities = fetch_all_pages(notion, settings.activities_db_id)
+    logger.info("Found %d activities to aggregate", len(activities))
 
-    summaries = _build_summaries(workouts)
+    summaries = _build_summaries(activities)
     logger.info("Generated %d summary entries (month/year x modality)", len(summaries))
 
     lifestyle = _compute_lifestyle_averages(notion, settings)
