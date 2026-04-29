@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime, timedelta
+import time
 
 from garminconnect import Garmin as GarminClient
 from notion_client import Client as NotionClient
