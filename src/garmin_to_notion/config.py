@@ -23,6 +23,7 @@ class Settings:
     sleep_db_id: str | None
     workouts_db_id: str | None
     summary_db_id: str | None
+    fitness_summary_db_id: str | None = None
     timezone: ZoneInfo
     fetch_limit: int
     days_back: int
@@ -82,6 +83,7 @@ def load_settings(require_garmin: bool = True) -> Settings:
         pr_db_id=os.getenv("NOTION_PR_DB_ID"),
         steps_db_id=os.getenv("NOTION_STEPS_DB_ID"),
         sleep_db_id=os.getenv("NOTION_SLEEP_DB_ID"),
+        fitness_summary_db_id=os.getenv("FITNESS_SUMMARY_DB_ID", ""),
         workouts_db_id=os.getenv("NOTION_WORKOUTS_DB_ID"),
         summary_db_id=os.getenv("NOTION_SUMMARY_DB_ID"),
         timezone=timezone,
