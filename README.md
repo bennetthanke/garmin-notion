@@ -17,7 +17,7 @@ Sync your Garmin fitness data to Notion databases. Fully automated via GitHub Ac
 - **60+ activity types** — running, cycling, swimming, strength, BJJ, climbing, winter sports, and more
 - **Auto-discovery** — finds your Notion databases by name, no manual IDs needed
 - **Timezone-aware** — configurable via `TIMEZONE` variable, all timestamps are correct
-- **Zero-touch automation — runs 3x/day via GitHub Actions (free tier friendly))
+- **Zero-touch automation — runs 3x/day via GitHub Actions (free tier friendly)
 
 ## Setup Guide
 
