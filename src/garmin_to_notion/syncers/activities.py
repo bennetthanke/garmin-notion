@@ -223,6 +223,33 @@ def sync_activities(
         time.sleep(0.5)
     logger.info("Pre-fetched %d existing activity IDs", len(existing_ids))
     
+    # TEMPORARY: backfill VO2 Max on existing activities
+    if False:  # Change to False after running once
+            logger.info("Backfilling VO2 Max on existing activities...")
+            repaired = 0
+            for activity in activities:
+                    garmin_id = activity.get("activityId")
+                    vo2 = activity.get("vO2MaxValue")
+                    if not garmin_id or not vo2:
+                            continue
+                    if garmin_id not in existing_ids:
+                            continue
+                    query = notion.databases.query(
+                            database_id=settings.activities_db_id,
+                            filter={"property": "Garmin ID", "number": {"equals": garmin_id}},
+                    )
+                    if query["results"]:
+                            time.sleep(0.5)
+                            notion.pages.update(
+                                    page_id=query["results"][0]["id"],
+                                    properties={"VO2 Max": {"number": vo2}},
+                            )
+                            repaired += 1
+                            if repaired % 20 == 0:
+                                    logger.info("Backfilled %d activities", repaired)
+            logger.info("VO2 Max backfill complete: %d updated", repaired)
+            return
+
     created, updated, skipped = 0, 0, 0
 
     for activity in activities:
