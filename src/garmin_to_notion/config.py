@@ -23,7 +23,7 @@ class Settings:
     sleep_db_id: str | None
     workouts_db_id: str | None
     summary_db_id: str | None
-    fitness_summary_db_id: str | None = None
+    fitness_summary_db_id: str | None
     timezone: ZoneInfo
     fetch_limit: int
     days_back: int

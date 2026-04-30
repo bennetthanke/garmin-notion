@@ -8,6 +8,7 @@ Usage:
     python -m garmin_to_notion sleep        # Sync only sleep data
     python -m garmin_to_notion workouts     # Sync only workouts
     python -m garmin_to_notion summary      # Sync only summary aggregations
+    python -m garmin_to_notion fitness_summary  # Sync only fitness summary data
     python -m garmin_to_notion cleanup      # Deduplicate workouts (dry run)
     python -m garmin_to_notion cleanup --execute  # Actually remove duplicates
 """

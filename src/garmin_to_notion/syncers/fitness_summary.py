@@ -164,7 +164,7 @@ def sync_fitness_summary(
     garmin: GarminClient,
     notion: NotionClient,
     settings: Settings,
-) -> None:
+    ) -> None:
     """Sync fitness metrics to the Notion Fitness Summary database."""
     if not settings.fitness_summary_db_id:
         logger.info("No fitness summary database configured, skipping")
