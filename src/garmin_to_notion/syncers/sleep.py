@@ -164,6 +164,18 @@ def _build_properties(sleep_data: dict, settings: Settings, garmin: GarminClient
             hrv_status = hrv_summary.get("status", "UNKNOWN") or "UNKNOWN"
         except Exception:
             logger.debug("No HRV data for %s", sleep_date)
+    # Previous day stress (the day before = the day that affects this sleep)
+    stress_avg = 0
+    stress_max = 0
+    if garmin:
+            try:
+                    prev_date = (datetime.strptime(sleep_date, "%Y-%m-%d") - timedelta(days=1)).strftime("%Y-%m-%d")
+                    stress_data = garmin.get_all_day_stress(prev_date)
+                    if stress_data:
+                            stress_avg = stress_data.get("overallStressLevel", 0) or 0
+                            stress_max = stress_data.get("maxStressLevel", 0) or 0
+            except Exception:
+                    logger.debug("No stress data for %s", sleep_date)
 
     return {
         "Name": {
@@ -226,6 +238,8 @@ def _build_properties(sleep_data: dict, settings: Settings, garmin: GarminClient
         "SpO2": {"number": spo2 / 100 if spo2 else None},
         "Bed Time": {"rich_text": [{"text": {"content": bed_time}}] if bed_time else []},
         "Wake Time": {"rich_text": [{"text": {"content": wake_time}}] if wake_time else []},
+        "Stress Avg": {"number": stress_avg if stress_avg else None},
+        "Stress Max": {"number": stress_max if stress_max else None},
     }
 
 
@@ -292,7 +306,8 @@ def sync_sleep(
         if new_props:
             update_props = {}
             for key in ("Score", "Garmin Score", "HRV Avg", "HRV Status",
-                        "Respiration", "SpO2", "Bed Time", "Wake Time"):
+                        "Respiration", "SpO2", "Bed Time", "Wake Time",
+                        "Stress Avg", "Stress Max"):
                 if key in new_props and new_props[key]:
                     update_props[key] = new_props[key]
             if update_props:
