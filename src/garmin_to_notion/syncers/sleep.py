@@ -121,6 +121,13 @@ def _build_properties(sleep_data: dict, settings: Settings) -> dict | None:
         logger.info("Skipping sleep data for %s (total sleep is 0)", sleep_date)
         return None
 
+    # Garmin's official sleep score
+    sleep_scores = daily_sleep.get("sleepScores", {})
+    overall = sleep_scores.get("overall", {})
+    garmin_score = overall.get("value", 0) or 0
+    if not garmin_score:
+        garmin_score = daily_sleep.get("sleepQualityScore", 0) or 0
+
     score = _compute_sleep_score(
         daily_sleep.get("deepSleepSeconds", 0) or 0,
         daily_sleep.get("lightSleepSeconds", 0) or 0,
@@ -182,6 +189,7 @@ def _build_properties(sleep_data: dict, settings: Settings) -> dict | None:
         },
         "Resting HR": {"number": sleep_data.get("restingHeartRate", 0)},
         "Score": {"number": score},
+        "Garmin Score": {"number": garmin_score},
     }
 
 
@@ -245,12 +253,20 @@ def sync_sleep(
             continue
 
         new_score = new_props["Score"]["number"]
-        if new_score and new_score > 0:
-            notion.pages.update(
-                page_id=page["id"],
-                properties={"Score": {"number": new_score}},
-            )
-            repaired += 1
+        if new_props:
+            garmin_score_val = new_props.get("Garmin Score", {}).get("number", 0)
+            new_score = new_props["Score"]["number"]
+            update_props = {}
+            if new_score and new_score > 0:
+                update_props["Score"] = {"number": new_score}
+            if garmin_score_val and garmin_score_val > 0:
+                update_props["Garmin Score"] = {"number": garmin_score_val}
+            if update_props:
+                notion.pages.update(
+                    page_id=page["id"],
+                    properties=update_props,
+                )
+                repaired += 1
 
     logger.info(
         "Sleep sync complete: %d created, %d already existed, %d scores repaired",
