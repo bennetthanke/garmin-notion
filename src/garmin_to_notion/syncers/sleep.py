@@ -169,13 +169,13 @@ def _build_properties(sleep_data: dict, settings: Settings, garmin: GarminClient
     stress_max = 0
     if garmin:
             try:
-                    prev_date = (datetime.strptime(sleep_date, "%Y-%m-%d") - timedelta(days=1)).strftime("%Y-%m-%d")
-                    stress_data = garmin.get_all_day_stress(prev_date)
-                    if stress_data:
-                            stress_avg = stress_data.get("overallStressLevel", 0) or 0
-                            stress_max = stress_data.get("maxStressLevel", 0) or 0
+                prev_date = (datetime.strptime(sleep_date, "%Y-%m-%d") - timedelta(days=1)).strftime("%Y-%m-%d")
+                stress_data = garmin.get_all_day_stress(prev_date)
+                if stress_data:
+                        stress_avg = stress_data.get("avgStressLevel", 0) or 0
+                        stress_max = stress_data.get("maxStressLevel", 0) or 0
             except Exception:
-                    logger.debug("No stress data for %s", sleep_date)
+                logger.debug("No stress data for %s", sleep_date)
 
     return {
         "Name": {
@@ -316,6 +316,40 @@ def sync_sleep(
                     properties=update_props,
                 )
                 repaired += 1
+
+    # ── Stress-only backfill ─────────────────────────────────────
+    if False:  # Flip to False after backfill completes
+        stress_filled = 0
+        for date_str, page in existing_map.items():
+            props = page["properties"]
+            current_stress = get_prop(props, "Stress Avg", "number")
+            if current_stress and current_stress > 0:
+                continue
+
+            prev_date = (datetime.strptime(date_str, "%Y-%m-%d") - timedelta(days=1)).strftime("%Y-%m-%d")
+            try:
+                stress_data = garmin.get_all_day_stress(prev_date)
+                if not stress_data:
+                    continue
+                stress_avg = stress_data.get("avgStressLevel", 0) or 0
+                stress_max = stress_data.get("maxStressLevel", 0) or 0
+                if not stress_avg and not stress_max:
+                    continue
+
+                notion.pages.update(
+                    page_id=page["id"],
+                    properties={
+                        "Stress Avg": {"number": stress_avg if stress_avg else None},
+                        "Stress Max": {"number": stress_max if stress_max else None},
+                    },
+                )
+                stress_filled += 1
+                if stress_filled % 25 == 0:
+                    logger.info("Stress backfill progress: %d entries", stress_filled)
+            except Exception as e:
+                logger.debug("Stress backfill error for %s: %s", date_str, e)
+
+        logger.info("Stress backfill complete: %d entries updated", stress_filled)
 
     logger.info(
         "Sleep sync complete: %d created, %d already existed, %d scores repaired",
