@@ -21,7 +21,7 @@ import sys
 
 from garmin_to_notion.config import load_settings
 from garmin_to_notion.log import setup_logging
-from garmin_to_notion.fitness_summary import sync_fitness_summary
+from garmin_to_notion.syncers.fitness_summary import sync_fitness_summary
 
 
 def main() -> None:
