@@ -16,6 +16,12 @@ from garmin_to_notion.notion_helpers import fetch_all_pages, get_prop
 
 logger = logging.getLogger(__name__)
 
+def _timestamp_to_time(ts_ms: int | None) -> str:
+    """Convert Garmin local-epoch-ms timestamp to 'HH:MM AM/PM'."""
+    if not ts_ms:
+        return ""
+    dt = datetime.fromtimestamp(ts_ms / 1000, tz=ZoneInfo("UTC"))
+    return dt.strftime("%I:%M %p")
 
 def _compute_sleep_score(
     deep_sec: int, light_sec: int, rem_sec: int, awake_sec: int
@@ -105,7 +111,7 @@ def _get_sleep_range(
     return results
 
 
-def _build_properties(sleep_data: dict, settings: Settings) -> dict | None:
+def _build_properties(sleep_data: dict, settings: Settings, garmin: GarminClient = None) -> dict | None:
     """Build Notion properties from Garmin sleep data. Returns None if no data."""
     daily_sleep = sleep_data.get("dailySleepDTO", {})
     if not daily_sleep:
@@ -134,6 +140,30 @@ def _build_properties(sleep_data: dict, settings: Settings) -> dict | None:
         daily_sleep.get("remSleepSeconds", 0) or 0,
         daily_sleep.get("awakeSleepSeconds", 0) or 0,
     )
+
+    # Respiration & SpO2 (already in sleep data)
+    respiration = daily_sleep.get("averageRespirationValue", 0) or 0
+    spo2 = daily_sleep.get("averageSpO2Value", 0) or 0
+
+    # Bed / Wake times
+    bed_time = _timestamp_to_time(
+        daily_sleep.get("sleepStartTimestampLocal")
+    )
+    wake_time = _timestamp_to_time(
+        daily_sleep.get("sleepEndTimestampLocal")
+    )
+
+    # HRV data (separate API call)
+    hrv_avg = 0
+    hrv_status = "UNKNOWN"
+    if garmin:
+        try:
+            hrv_data = garmin.get_hrv_data(sleep_date)
+            hrv_summary = hrv_data.get("hrvSummary", {})
+            hrv_avg = hrv_summary.get("lastNightAvg", 0) or 0
+            hrv_status = hrv_summary.get("status", "UNKNOWN") or "UNKNOWN"
+        except Exception:
+            logger.debug("No HRV data for %s", sleep_date)
 
     return {
         "Name": {
@@ -190,6 +220,12 @@ def _build_properties(sleep_data: dict, settings: Settings) -> dict | None:
         "Resting HR": {"number": sleep_data.get("restingHeartRate", 0)},
         "Score": {"number": score},
         "Garmin Score": {"number": garmin_score},
+        "HRV Avg": {"number": hrv_avg if hrv_avg else None},
+        "HRV Status": {"select": {"name": hrv_status} if hrv_status != "UNKNOWN" else None},
+        "Respiration": {"number": round(respiration, 1) if respiration else None},
+        "SpO2": {"number": spo2 / 100 if spo2 else None},
+        "Bed Time": {"rich_text": [{"text": {"content": bed_time}}] if bed_time else []},
+        "Wake Time": {"rich_text": [{"text": {"content": wake_time}}] if wake_time else []},
     }
 
 
@@ -221,7 +257,7 @@ def sync_sleep(
         if not sleep_date:
             continue
 
-        properties = _build_properties(data, settings)
+        properties = _build_properties(data, settings, garmin)
         if not properties:
             continue
         time.sleep(1.0)
@@ -248,19 +284,17 @@ def sync_sleep(
         except Exception:
             continue
 
-        new_props = _build_properties(data, settings)
+        new_props = _build_properties(data, settings, garmin)
         if not new_props:
             continue
 
         new_score = new_props["Score"]["number"]
         if new_props:
-            garmin_score_val = new_props.get("Garmin Score", {}).get("number", 0)
-            new_score = new_props["Score"]["number"]
             update_props = {}
-            if new_score and new_score > 0:
-                update_props["Score"] = {"number": new_score}
-            if garmin_score_val and garmin_score_val > 0:
-                update_props["Garmin Score"] = {"number": garmin_score_val}
+            for key in ("Score", "Garmin Score", "HRV Avg", "HRV Status",
+                        "Respiration", "SpO2", "Bed Time", "Wake Time"):
+                if key in new_props and new_props[key]:
+                    update_props[key] = new_props[key]
             if update_props:
                 notion.pages.update(
                     page_id=page["id"],
