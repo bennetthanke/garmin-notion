@@ -20,6 +20,7 @@ import sys
 
 from garmin_to_notion.config import load_settings
 from garmin_to_notion.log import setup_logging
+from garmin_to_notion.fitness_summary import sync_fitness_summary
 
 
 def main() -> None:
@@ -30,7 +31,7 @@ def main() -> None:
         "command",
         nargs="?",
         default="all",
-        choices=["all", "activities", "records", "steps", "sleep", "workouts", "summary", "cleanup"],
+        choices=["all", "activities", "records", "steps", "sleep", "workouts", "summary", "fitness_summary", "cleanup"],
         help="Which sync to run (default: all)",
     )
     parser.add_argument(
@@ -95,6 +96,7 @@ def main() -> None:
         "steps": lambda: sync_daily_steps(clients.garmin, clients.notion, settings),
         "sleep": lambda: sync_sleep(clients.garmin, clients.notion, settings),
         "summary": lambda: sync_summary(clients.notion, settings),
+        "fitness_summary": lambda: sync_fitness_summary(clients.garmin, clients.notion, settings),
     }
 
     # Database ID required for each syncer
@@ -104,6 +106,7 @@ def main() -> None:
         "steps": settings.steps_db_id,
         "sleep": settings.sleep_db_id,
         "summary": settings.summary_db_id,
+        "fitness_summary": settings.fitness_summary_db_id,
     }
 
     commands = list(sync_map.keys()) if args.command == "all" else [args.command]
