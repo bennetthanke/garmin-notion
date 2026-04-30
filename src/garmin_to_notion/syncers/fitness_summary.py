@@ -86,74 +86,63 @@ def _build_properties(
                         props["VO2 Max (Cycle)"] = {"number": round(vo2, 1)}
     except Exception:
         logger.debug("No VO2 max for %s", date_str)
-    # Endurance Score
-    try:
-        es_data = garmin.get_endurance_score(date_str)
-        if es_data:
-            score = es_data.get("overallScore") or es_data.get("enduranceScore")
-            if score:
-                props["Endurance Score"] = {"number": round(score)}
-    except Exception:
-        logger.debug("No endurance score for %s", date_str)
-    # Hill Score
-    try:
-        hs_data = garmin.get_hill_score(date_str)
-        if hs_data:
-            score = hs_data.get("overallScore") or hs_data.get("hillScore")
-            if score:
-                props["Hill Score"] = {"number": round(score)}
-    except Exception:
-        logger.debug("No hill score for %s", date_str)
+    # # Endurance Score
+    # try:
+    #     es_data = garmin.get_endurance_score(date_str)
+    #     if es_data:
+    #         score = es_data.get("overallScore") or es_data.get("enduranceScore")
+    #         if score:
+    #             props["Endurance Score"] = {"number": round(score)}
+    # except Exception:
+    #     logger.debug("No endurance score for %s", date_str)
+    # # Hill Score
+    # try:
+    #     hs_data = garmin.get_hill_score(date_str)
+    #     if hs_data:
+    #         score = hs_data.get("overallScore") or hs_data.get("hillScore")
+    #         if score:
+    #             props["Hill Score"] = {"number": round(score)}
+    # except Exception:
+    #     logger.debug("No hill score for %s", date_str)
     # Race Predictions
     try:
-        rp_data = garmin.get_race_predictions()
-        if rp_data:
-            preds = rp_data if isinstance(rp_data, list) else [rp_data]
-            for pred in preds:
-                dist = pred.get("racePredictionDistanceType", "")
-                secs = pred.get("racePredictionInSeconds")
-                if dist == "FIVE_KM":
-                    props["Race 5K"] = {
-                        "rich_text": [{"text": {"content": _fmt_race_time(secs)}}]
-                    }
-                elif dist == "TEN_KM":
-                    props["Race 10K"] = {
-                        "rich_text": [{"text": {"content": _fmt_race_time(secs)}}]
-                    }
-                elif dist == "HALF_MARATHON":
-                    props["Race Half"] = {
-                        "rich_text": [{"text": {"content": _fmt_race_time(secs)}}]
-                    }
-                elif dist == "MARATHON":
-                    props["Race Marathon"] = {
-                        "rich_text": [{"text": {"content": _fmt_race_time(secs)}}]
-                    }
+            rp_data = garmin.get_race_predictions()
+            if rp_data:
+                    for garmin_key, notion_key in (
+                            ("time5K", "Race 5K"),
+                            ("time10K", "Race 10K"),
+                            ("timeHalfMarathon", "Race Half"),
+                            ("timeMarathon", "Race Marathon"),
+                    ):
+                            secs = rp_data.get(garmin_key)
+                            if secs:
+                                    props[notion_key] = {"rich_text": [{"text": {"content": _fmt_race_time(secs)}}]}
     except Exception:
-        logger.debug("No race predictions for %s", date_str)
+            logger.debug("No race predictions for %s", date_str)
     # Lactate Threshold
     try:
         lt_data = garmin.get_lactate_threshold(latest=True)
         if lt_data:
             shr = lt_data.get("speed_and_heart_rate", {})
             hr = shr.get("heartRate")
-            speed = shr.get("speed")
+            # speed = shr.get("speed")
             if hr:
                 props["LT Heart Rate"] = {"number": round(hr)}
-            if speed:
-                props["LT Speed"] = {"number": round(speed, 2)}
+            # if speed:
+            #     props["LT Speed"] = {"number": round(speed, 2)}
     except Exception:
         logger.debug("No lactate threshold for %s", date_str)
-    # Running Tolerance
-    try:
-        rt_data = garmin.get_running_tolerance(date_str, date_str, aggregation="daily")
-        if rt_data and isinstance(rt_data, list) and rt_data:
-            score = rt_data[0].get("runningTolerance") or rt_data[0].get("overallScore")
-            if score:
-                props["Running Tolerance"] = {"number": round(score, 1)}
-    except Exception:
-        logger.debug("No running tolerance for %s", date_str)
-    if not props:
-        return None
+    # # Running Tolerance
+    # try:
+    #     rt_data = garmin.get_running_tolerance(date_str, date_str, aggregation="daily")
+    #     if rt_data and isinstance(rt_data, list) and rt_data:
+    #         score = rt_data[0].get("runningTolerance") or rt_data[0].get("overallScore")
+    #         if score:
+    #             props["Running Tolerance"] = {"number": round(score, 1)}
+    # except Exception:
+    #     logger.debug("No running tolerance for %s", date_str)
+    # if not props:
+    #     return None
     # Add title and date
     props["Name"] = {"title": [{"text": {"content": date_str}}]}
     props["Date"] = {"date": {"start": date_str}}
