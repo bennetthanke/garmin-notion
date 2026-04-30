@@ -40,11 +40,11 @@ def _get_existing_dates(notion: NotionClient, database_id: str) -> dict[str, dic
     return result
 
 
-def _build_properties(
+def _build_props(
     garmin: GarminClient,
     date_str: str,
 ) -> dict | None:
-    """Build Notion properties from Garmin fitness metrics for a given date."""
+    """Build Notion props from Garmin fitness metrics for a given date."""
     props: dict = {}
     # Training Readiness
     try:
@@ -65,27 +65,33 @@ def _build_properties(
                 props["Training Level"] = {"select": {"name": str(level).upper()}}
     except Exception:
         logger.debug("No training readiness for %s", date_str)
-    # VO2 Max
-    try:
-        max_data = garmin.get_max_metrics(date_str)
-        if max_data:
-            metrics = (
-                max_data
-                if isinstance(max_data, list)
-                else max_data.get("maxMetList", [])
-            )
-            for m in (metrics if isinstance(metrics, list) else []):
-                sport = m.get("sport", "")
-                vo2 = m.get("generic", {}).get("vo2MaxPreciseValue") or m.get(
-                    "generic", {}
-                ).get("vo2MaxValue")
-                if vo2:
-                    if sport == "RUNNING":
-                        props["VO2 Max (Run)"] = {"number": round(vo2, 1)}
-                    elif sport == "CYCLING":
-                        props["VO2 Max (Cycle)"] = {"number": round(vo2, 1)}
-    except Exception:
-        logger.debug("No VO2 max for %s", date_str)
+    # Only pull race predictions + LT for today (API only returns current values)
+    today_str = datetime.now().strftime("%Y-%m-%d")
+    if date_str == today_str:
+            try:
+                    race_preds = garmin.get_race_predictions()
+                    if race_preds:
+                            for garmin_key, notion_key in (
+                                    ("time5K", "Race 5K"),
+                                    ("time10K", "Race 10K"),
+                                    ("timeHalfMarathon", "Race Half"),
+                                    ("timeMarathon", "Race Marathon"),
+                            ):
+                                    secs = race_preds.get(garmin_key)
+                                    if secs:
+                                            props[notion_key] = {"rich_text": [{"text": {"content": _fmt_race_time(secs)}}]}
+            except Exception as e:
+                    logger.debug("Race predictions error: %s", e)
+
+            try:
+                    lt_data = garmin.get_lactate_threshold()
+                    if lt_data:
+                            shr = lt_data.get("speed_and_heart_rate", {})
+                            hr = shr.get("heartRate")
+                            if hr:
+                                    props["LT Heart Rate"] = {"number": round(hr)}
+            except Exception as e:
+                    logger.debug("LT threshold error: %s", e)
     # # Endurance Score
     # try:
     #     es_data = garmin.get_endurance_score(date_str)
@@ -104,34 +110,6 @@ def _build_properties(
     #             props["Hill Score"] = {"number": round(score)}
     # except Exception:
     #     logger.debug("No hill score for %s", date_str)
-    # Race Predictions
-    try:
-            rp_data = garmin.get_race_predictions()
-            if rp_data:
-                    for garmin_key, notion_key in (
-                            ("time5K", "Race 5K"),
-                            ("time10K", "Race 10K"),
-                            ("timeHalfMarathon", "Race Half"),
-                            ("timeMarathon", "Race Marathon"),
-                    ):
-                            secs = rp_data.get(garmin_key)
-                            if secs:
-                                    props[notion_key] = {"rich_text": [{"text": {"content": _fmt_race_time(secs)}}]}
-    except Exception:
-            logger.debug("No race predictions for %s", date_str)
-    # Lactate Threshold
-    try:
-        lt_data = garmin.get_lactate_threshold(latest=True)
-        if lt_data:
-            shr = lt_data.get("speed_and_heart_rate", {})
-            hr = shr.get("heartRate")
-            # speed = shr.get("speed")
-            if hr:
-                props["LT Heart Rate"] = {"number": round(hr)}
-            # if speed:
-            #     props["LT Speed"] = {"number": round(speed, 2)}
-    except Exception:
-        logger.debug("No lactate threshold for %s", date_str)
     # # Running Tolerance
     # try:
     #     rt_data = garmin.get_running_tolerance(date_str, date_str, aggregation="daily")
@@ -170,7 +148,7 @@ def sync_fitness_summary(
         if date_str in existing_map:
             skipped += 1
             continue
-        props = _build_properties(garmin, date_str)
+        props = _build_props(garmin, date_str)
         if not props:
             continue
         time.sleep(1.0)

@@ -97,6 +97,7 @@ def _build_properties(activity: dict, settings: Settings) -> dict:
         "Garmin ID": {"number": activity.get("activityId")},
         "Day of Week": {"select": {"name": day_of_week}},
         "Hour Block": {"select": {"name": hour_block}},
+        "VO2 Max": {"number": activity.get("vO2MaxValue")},
     }
 
 
