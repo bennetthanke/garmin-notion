@@ -27,9 +27,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cache/pip
-          key: $ runner.os -pip-$ hashFiles('requirements.txt') 
+          key: \$ runner.os \-pip-\$ hashFiles('requirements.txt') \
           restore-keys: |
-            $ runner.os -pip-
+            \$ runner.os \-pip-
 
       - name: Restore Garmin tokens
         uses: actions/cache@v4
@@ -47,16 +47,16 @@ jobs:
 
       - name: Sanity check secrets
         run: |
-          if [ -z "$ secrets.NOTION_TOKEN " ]; then
+          if [ -z "\$ secrets.NOTION_TOKEN \" ]; then
             echo "::error::NOTION_TOKEN is empty"; exit 1
           fi
-          if [ -z "$ secrets.GARMIN_EMAIL " ] || [ -z "$ secrets.GARMIN_PASSWORD " ]; then
+          if [ -z "\$ secrets.GARMIN_EMAIL \" ] || [ -z "\$ secrets.GARMIN_PASSWORD \" ]; then
             echo "::error::Garmin credentials missing"; exit 1
           fi
           echo "NOTION_TOKEN length: ${#NOTION_TOKEN}"
           echo "Token prefix: ${NOTION_TOKEN:0:4}..."
         env:
-          NOTION_TOKEN: $ secrets.NOTION_TOKEN 
+          NOTION_TOKEN: \$ secrets.NOTION_TOKEN \
 
       - name: Verify Notion integration sees Fitness Tracker DBs
         run: |
@@ -88,17 +88,17 @@ jobs:
               sys.exit(1)
           PY
         env:
-          NOTION_TOKEN: $ secrets.NOTION_TOKEN 
+          NOTION_TOKEN: \$ secrets.NOTION_TOKEN \
 
       - name: Run sync (verbose)
         env:
-          GARMIN_EMAIL: $ secrets.GARMIN_EMAIL 
-          GARMIN_PASSWORD: $ secrets.GARMIN_PASSWORD 
-          GARMIN_TOKENS: $ secrets.GARMIN_TOKENS 
-          NOTION_TOKEN: $ secrets.NOTION_TOKEN 
+          GARMIN_EMAIL: \$ secrets.GARMIN_EMAIL \
+          GARMIN_PASSWORD: \$ secrets.GARMIN_PASSWORD \
+          GARMIN_TOKENS: \$ secrets.GARMIN_TOKENS \
+          NOTION_TOKEN: \$ secrets.NOTION_TOKEN \
           GARMIN_TOKENSTORE: ~/.garmin_tokens
-          TIMEZONE: $ vars.TIMEZONE 
-          GARMIN_DAYS_BACK: $ vars.GARMIN_DAYS_BACK 
+          TIMEZONE: \$ vars.TIMEZONE \
+          GARMIN_DAYS_BACK: \$ vars.GARMIN_DAYS_BACK \
           PYTHONPATH: src
         run: python -m garmin_to_notion all -v
 
