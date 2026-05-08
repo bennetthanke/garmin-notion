@@ -47,6 +47,9 @@ The Notion AI prompt creates a complete dashboard with:
 ### Bug Fixes
 - Fixed Garmin stress API key: `avgStressLevel` (not `overallStressLevel`, which returns NULL)
 
+### Performance
+- **Configurable summary window** — by default the Activity Summary sync only recomputes the current and previous month plus the current year, instead of every month/year bucket since you started tracking. Cuts a typical sync from ~5 minutes to ~30 seconds. Tune via `SUMMARY_WINDOW_MONTHS` (default `2`, set to `9999` for a full rebuild).
+
 ## Features
 
 - **Activities** — distance, pace, power, HR, training effect, VO2 Max, with emoji icons and heatmap properties
@@ -105,6 +108,7 @@ Go to **Settings → Secrets and variables → Actions → Variables** and add:
 |---|---|---|
 | `TIMEZONE` | `UTC` | Your IANA timezone (e.g. `America/New_York`, `Europe/London`) |
 | `GARMIN_DAYS_BACK` | `30` | Days of sleep/steps history to sync |
+| `SUMMARY_WINDOW_MONTHS` | `2` | How many recent months the Activity Summary recomputes (set `9999` for a full rebuild) |
 
 ### Step 6: Run!
 
@@ -160,6 +164,7 @@ Activities, Personal Records, Daily Steps, Sleep, and Fitness Summary are synced
 |---|---|---|
 | `TIMEZONE` | `UTC` | IANA timezone for activity timestamps |
 | `GARMIN_DAYS_BACK` | `30` | Days of sleep/steps history to sync |
+| `SUMMARY_WINDOW_MONTHS` | `2` | Months of history the Activity Summary recomputes per run (set `9999` to rebuild every period) |
 
 ### Database IDs (optional — auto-discovered by default)
 
@@ -240,6 +245,9 @@ Notion calendar views require a Date property. If a month appears empty, check t
 
 ### Activity Summary shows zero steps or sleep
 Activity Summary aggregates from Workouts, Daily Steps, and Sleep databases. Make sure all three syncs have run at least once. Run `python -m garmin_to_notion all` to sync everything, then `python -m garmin_to_notion summary` to regenerate summaries.
+
+### Activity Summary missing old months after backfilling activities
+By default the summary sync only recomputes the last 2 months plus the current year. If you backfilled older activities, force a one-time full rebuild by setting `SUMMARY_WINDOW_MONTHS=9999` (as a repo Variable or local env var) and running the sync. Set it back to `2` afterward.
 
 ### Sleep sync is slow on first run
 The first sync fetches `GARMIN_DAYS_BACK` days of sleep data (default 30). For large backfills (e.g. `GARMIN_DAYS_BACK=3650`), the first run calls the Garmin API for each day without existing data. Subsequent syncs skip existing dates and are near-instant.
