@@ -27,9 +27,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cache/pip
-          key: $ runner.os -pip-$ hashFiles('requirements.txt') 
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
           restore-keys: |
-            $ runner.os -pip-
+            ${{ runner.os }}-pip-
 
       - name: Restore Garmin tokens
         uses: actions/cache@v4
@@ -47,13 +47,13 @@ jobs:
 
       - name: Run sync
         env:
-          GARMIN_EMAIL: $ secrets.GARMIN_EMAIL 
-          GARMIN_PASSWORD: $ secrets.GARMIN_PASSWORD 
-          GARMIN_TOKENS: $ secrets.GARMIN_TOKENS 
-          NOTION_TOKEN: $ secrets.NOTION_TOKEN 
+          GARMIN_EMAIL: ${{ secrets.GARMIN_EMAIL }}
+          GARMIN_PASSWORD: ${{ secrets.GARMIN_PASSWORD }}
+          GARMIN_TOKENS: ${{ secrets.GARMIN_TOKENS }}
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
           GARMIN_TOKENSTORE: ~/.garmin_tokens
-          TIMEZONE: $ vars.TIMEZONE 
-          GARMIN_DAYS_BACK: $ vars.GARMIN_DAYS_BACK 
+          TIMEZONE: ${{ vars.TIMEZONE }}
+          GARMIN_DAYS_BACK: ${{ vars.GARMIN_DAYS_BACK }}
           PYTHONPATH: src
         run: python -m garmin_to_notion all -v
 
