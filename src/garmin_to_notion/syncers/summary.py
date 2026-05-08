@@ -158,6 +158,24 @@ def _year_range(d: date) -> tuple[date, date, str]:
     label = str(d.year)
     return start, end, label
 
+def _is_in_window(period: str, end: date, today: date, window_months: int) -> bool:
+    """True if a bucket should be (re)written based on the configured window.
+
+    window_months <= 0 or >= 9999 disables filtering (full rebuild).
+    Month buckets: include current month plus (window_months - 1) prior.
+    Year buckets: current year always; prior years if their Dec 31 is
+    within window_months of today.
+    """
+    if window_months <= 0 or window_months >= 9999:
+        return True
+    if period == "Year":
+        if end.year >= today.year:
+            return True
+        months_old = (today.year - end.year) * 12 + (today.month - 12)
+        return months_old < window_months
+    months_old = (today.year - end.year) * 12 + (today.month - end.month)
+    return months_old < window_months
+
 
 def _compute_lifestyle_averages(
     notion: NotionClient,
@@ -236,7 +254,7 @@ def _compute_lifestyle_averages(
     return averages
 
 
-def _build_summaries(activities: list[dict]) -> list[dict]:
+def _build_summaries(activities: list[dict], today: date, window_months: int) -> list[dict]:
     """Group activities into month/year buckets, then aggregate All + per-modality."""
     records: list[dict] = []
     for w in activities:
@@ -271,6 +289,12 @@ def _build_summaries(activities: list[dict]) -> list[dict]:
             if key not in buckets:
                 buckets[key] = {"start": start, "end": end, "records": []}
             buckets[key]["records"].append(rec)
+
+    buckets = {
+        key: bucket
+        for key, bucket in buckets.items()
+        if _is_in_window(key[0], bucket["end"], today, window_months)
+    }
 
     summaries: list[dict] = []
     for (period, label), bucket in buckets.items():
@@ -405,7 +429,11 @@ def sync_summary(notion: NotionClient, settings: Settings) -> None:
     activities = fetch_all_pages(notion, settings.activities_db_id)
     logger.info("Found %d activities to aggregate", len(activities))
 
-    summaries = _build_summaries(activities)
+    from datetime import datetime
+    today = datetime.now(settings.timezone).date()
+    window = settings.summary_window_months
+    logger.info("Summary window: %d month(s) (set SUMMARY_WINDOW_MONTHS=9999 to rebuild all)", window)
+    summaries = _build_summaries(activities, today, window)
     logger.info("Generated %d summary entries (month/year x modality)", len(summaries))
 
     lifestyle = _compute_lifestyle_averages(notion, settings)
