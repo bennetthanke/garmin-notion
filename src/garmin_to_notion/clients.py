@@ -90,13 +90,17 @@ def _init_garmin_with_tokens(tokens: dict) -> GarminClient:
         **{k: v for k, v in oauth2.items() if k in garth.sso.OAuth2Token.__dataclass_fields__}
     )
 
-    # Load profile (socialProfile works with OAuth2 bearer tokens)
+    # Load profile (socialProfile works with OAuth2 bearer tokens).
+    # Re-raise auth/rate-limit errors so init_clients can fall back to disk/email path.
     try:
         profile = garmin.garth.connectapi("/userprofile-service/socialProfile")
         if profile and isinstance(profile, dict):
             garmin.display_name = profile.get("displayName")
             garmin.full_name = profile.get("fullName", profile.get("displayName"))
-    except Exception:
+    except Exception as e:
+        msg = str(e)
+        if "429" in msg or "401" in msg or "403" in msg:
+            raise
         garmin.display_name = None
         garmin.full_name = None
 
@@ -107,7 +111,10 @@ def _init_garmin_with_tokens(tokens: dict) -> GarminClient:
             garmin.unit_system = settings["userData"].get("measurementSystem")
         else:
             garmin.unit_system = None
-    except Exception:
+    except Exception as e:
+        msg = str(e)
+        if "429" in msg or "401" in msg or "403" in msg:
+            raise
         garmin.unit_system = None
 
     return garmin
