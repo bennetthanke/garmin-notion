@@ -1,11 +1,9 @@
 name: Garmin to Notion Sync
 
 on:
-  # Schedule disabled while validating new auth path.
-  # Re-enable after a clean workflow_dispatch run.
-  # schedule:
-  #   - cron: '17 9 * * *'   # 5:17 AM ET (EDT) - off-the-hour jitter
-  #   - cron: '17 0 * * *'   # 8:17 PM ET (EDT)
+  schedule:
+   - cron: '17 9 * * *'   # 5:17 AM ET (EDT) - off-the-hour jitter
+   - cron: '17 0 * * *'   # 8:17 PM ET (EDT)
   workflow_dispatch:
     inputs:
       days_back:
