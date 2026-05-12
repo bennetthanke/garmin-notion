@@ -1,11 +1,17 @@
 name: Garmin to Notion Sync
 
 on:
-  schedule:
-    - cron: '0 9 * * *'   # 5 AM ET (EDT) / 4 AM ET (EST)
-    - cron: '0 16 * * *'  # 12 PM ET (EDT) / 11 AM ET (EST)
-    - cron: '0 0 * * *'   # 8 PM ET (EDT) / 7 PM ET (EST)
+  # Schedule disabled while validating new auth path.
+  # Re-enable after a clean workflow_dispatch run.
+  # schedule:
+  #   - cron: '17 9 * * *'   # 5:17 AM ET (EDT) - off-the-hour jitter
+  #   - cron: '17 0 * * *'   # 8:17 PM ET (EDT)
   workflow_dispatch:
+    inputs:
+      days_back:
+        description: "Days back to sync (overrides GARMIN_DAYS_BACK var)"
+        default: ""
+        required: false
 
 concurrency:
   group: garmin-sync
@@ -45,6 +51,13 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: Add jitter
+        if: github.event_name == 'schedule'
+        run: |
+          JITTER=$((RANDOM % 600))
+          echo "Sleeping ${JITTER}s before hitting Garmin."
+          sleep $toolu_011thj7QGVdcDDP5kgvkqL2c
+
       - name: Run sync
         env:
           GARMIN_EMAIL: ${{ secrets.GARMIN_EMAIL }}
@@ -53,7 +66,7 @@ jobs:
           NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
           GARMIN_TOKENSTORE: ~/.garmin_tokens
           TIMEZONE: ${{ vars.TIMEZONE }}
-          GARMIN_DAYS_BACK: ${{ vars.GARMIN_DAYS_BACK }}
+          GARMIN_DAYS_BACK: $106
           PYTHONPATH: src
         run: python -m garmin_to_notion all -v
 

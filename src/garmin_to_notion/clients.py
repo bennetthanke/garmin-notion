@@ -153,28 +153,28 @@ def init_clients(settings: Settings) -> Clients:
             logger.warning("Cached tokens failed: %s", e)
 
     # 3. Fresh login with retry (last resort)
-    max_retries = 3
-    for attempt in range(1, max_retries + 1):
+    try:
+        garmin = GarminClient(settings.garmin_email, settings.garmin_password)
+        garmin.login()
+        logger.info("Garmin auth successful (fresh login)")
+        # Save garth tokens for next time so subsequent runs skip SSO
         try:
-            garmin = GarminClient(settings.garmin_email, settings.garmin_password)
-            garmin.login()
-            logger.info("Garmin auth successful (fresh login)")
-            # Save garth tokens for next time
-            try:
-                TOKENSTORE_DIR.mkdir(parents=True, exist_ok=True)
-                garmin.garth.dump(str(TOKENSTORE_DIR))
-            except Exception:
-                pass
-            return Clients(garmin=garmin, notion=NotionClient(auth=settings.notion_token))
+            TOKENSTORE_DIR.mkdir(parents=True, exist_ok=True)
+            garmin.garth.dump(str(TOKENSTORE_DIR))
+            logger.info("Saved refreshed Garmin tokens to %s", TOKENSTORE_DIR)
         except Exception as e:
-            if attempt < max_retries and "429" in str(e):
-                wait = 30 * attempt
-                logger.warning("Rate limited (attempt %d/%d), waiting %ds...", attempt, max_retries, wait)
-                time.sleep(wait)
-            else:
-                logger.error("Failed to authenticate (attempt %d/%d): %s", attempt, max_retries, e)
-                if attempt == max_retries:
-                    raise SystemExit(1) from e
+            logger.warning("Could not persist Garmin tokens after fresh login: %s", e)
+        return Clients(garmin=garmin, notion=NotionClient(auth=settings.notion_token))
+    except Exception as e:
+        msg = str(e)
+        if "429" in msg:
+            logger.warning(
+                "Garmin SSO rate-limited (429). Skipping this run cleanly; "
+                "next scheduled run will retry. Do not manually re-run for at least 2-4 hours."
+            )
+            raise SystemExit(0) from e
+        logger.error("Failed to authenticate: %s", e)
+        raise SystemExit(1) from e
 
 
 def init_notion_only(settings: Settings) -> NotionClient:
