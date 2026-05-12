@@ -66,7 +66,7 @@ jobs:
           NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
           GARMIN_TOKENSTORE: ~/.garmin_tokens
           TIMEZONE: ${{ vars.TIMEZONE }}
-          GARMIN_DAYS_BACK: $ github.event.inputs.days_back != '' && github.event.inputs.days_back || vars.GARMIN_DAYS_BACK 
+          GARMIN_DAYS_BACK: ${{ vars.GARMIN_DAYS_BACK }}
           PYTHONPATH: src
         run: python -m garmin_to_notion all -v
 
