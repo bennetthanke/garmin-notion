@@ -38,7 +38,7 @@ jobs:
             ${{ runner.os }}-pip-
 
       - name: Restore Garmin tokens
-        uses: actions/cache@v4
+        uses: actions/cache/restore@v4
         id: garmin-tokens
         with:
           path: ~/.garmin_tokens
@@ -56,7 +56,7 @@ jobs:
         run: |
           JITTER=$((RANDOM % 600))
           echo "Sleeping ${JITTER}s before hitting Garmin."
-          sleep $toolu_011thj7QGVdcDDP5kgvkqL2c
+          sleep $JITTER
 
       - name: Run sync
         env:
@@ -66,7 +66,7 @@ jobs:
           NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
           GARMIN_TOKENSTORE: ~/.garmin_tokens
           TIMEZONE: ${{ vars.TIMEZONE }}
-          GARMIN_DAYS_BACK: $106
+          GARMIN_DAYS_BACK: $ github.event.inputs.days_back != '' && github.event.inputs.days_back || vars.GARMIN_DAYS_BACK 
           PYTHONPATH: src
         run: python -m garmin_to_notion all -v
 
